@@ -1,4 +1,4 @@
-// Copyright 2022 The Google Research Authors.
+// Copyright 2024 The Google Research Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@
 #include "intent_recognition/processing/window_calculator.pb.h"
 #include "riegeli/bytes/fd_reader.h"
 #include "riegeli/bytes/fd_writer.h"
-#include "riegeli/bytes/reader.h"
+#include "riegeli/bytes/read_all.h"
 #include "riegeli/messages/text_parse.h"
 #include "riegeli/records/record_reader.h"
 #include "riegeli/records/record_writer.h"
@@ -109,7 +109,7 @@ absl::Status ProcessAnnotatedRecordingCollection(
   // Create the graph config based on the processing options.
   mediapipe::CalculatorGraphConfig graph_config =
       BuildDrishtiGraphWithProcessingOptions(proto_string, processing_options);
-  LOG(INFO) << "Graph config: " << graph_config.DebugString();
+  LOG(INFO) << "Graph config: " << graph_config;
 
   // Read input records, process them, and store the result.
   AnnotatedRecordingCollection input_arc;

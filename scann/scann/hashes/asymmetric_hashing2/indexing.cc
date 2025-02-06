@@ -1,4 +1,4 @@
-// Copyright 2022 The Google Research Authors.
+// Copyright 2024 The Google Research Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,20 +21,23 @@
 #include <vector>
 
 #include "absl/base/optimization.h"
+#include "absl/types/span.h"
 #include "scann/data_format/datapoint.h"
+#include "scann/data_format/dataset.h"
 #include "scann/distance_measures/distance_measure_base.h"
 #include "scann/distance_measures/one_to_one/dot_product.h"
 #include "scann/distance_measures/one_to_one/l1_distance.h"
 #include "scann/distance_measures/one_to_one/l2_distance.h"
+#include "scann/hashes/asymmetric_hashing2/training_model.h"
 #include "scann/hashes/internal/asymmetric_hashing_impl.h"
 #include "scann/hashes/internal/stacked_quantizers.h"
 #include "scann/oss_wrappers/scann_serialize.h"
+#include "scann/oss_wrappers/scann_status.h"
+#include "scann/projection/chunking_projection.h"
 #include "scann/proto/hash.pb.h"
 #include "scann/utils/common.h"
 #include "scann/utils/types.h"
 #include "scann/utils/util_functions.h"
-#include "tensorflow/core/lib/core/errors.h"
-#include "tensorflow/core/lib/core/status.h"
 
 namespace research_scann {
 namespace asymmetric_hashing2 {
@@ -84,7 +87,7 @@ Status Indexer<T>::Hash(const DatapointPtr<T>& input,
         MakeDatapointPtr(input.values(), input.dimensionality() - 1),
         *projector_, *quantization_distance_, model_->centers(), hashed));
     std::string s =
-        strings::FloatToKey(static_cast<float>(input.values_slice().back()));
+        strings::FloatToKey(static_cast<float>(input.values_span().back()));
     DCHECK_EQ(sizeof(float), s.size());
     const auto dim = hash_space_dimension() - sizeof(float);
     for (int i = 0; i < sizeof(float); i++) {
@@ -124,7 +127,7 @@ Status Indexer<T>::Hash(const DatapointPtr<T>& input,
     hashed->set_dimensionality(model_->centers().size());
   }
   hashed->mutable_values()->resize(hash_space_dimension());
-  return Hash(input, hashed->mutable_values_slice());
+  return Hash(input, hashed->mutable_values_span());
 }
 
 template <typename T>
@@ -155,7 +158,7 @@ Status Indexer<T>::HashWithNoiseShaping(
     const NoiseShapingParameter& noise_shaping_param) const {
   hashed->mutable_values()->resize(hash_space_dimension());
   return HashWithNoiseShaping(maybe_residual, original,
-                              hashed->mutable_values_slice(),
+                              hashed->mutable_values_span(),
                               noise_shaping_param);
 }
 
@@ -174,13 +177,26 @@ Status Indexer<T>::HashWithNoiseShaping(
     return UnimplementedError(
         "Noised-shaped hashing only works with dense inputs for now.");
   }
-  if (model_->quantization_scheme() != AsymmetricHasherConfig::PRODUCT) {
+  if (model_->quantization_scheme() == AsymmetricHasherConfig::PRODUCT) {
+    return asymmetric_hashing_internal::AhImpl<T>::IndexDatapointNoiseShaped(
+        maybe_residual, original, *projector_, model_->centers(),
+        noise_shaping_param.threshold, noise_shaping_param.eta, hashed);
+  } else if (model_->quantization_scheme() == AsymmetricHasherConfig::STACKED) {
+    SCANN_RETURN_IF_ERROR(
+        asymmetric_hashing_internal::StackedQuantizers<T>::Hash(
+            maybe_residual, *projector_, *quantization_distance_,
+            model_->centers(), hashed));
+    asymmetric_hashing_internal::StackedQuantizers<
+        T>::NoiseShapeQuantizedVector(maybe_residual, original,
+                                      model_->centers(),
+                                      noise_shaping_param.threshold,
+                                      noise_shaping_param.eta, hashed);
+  } else {
     return UnimplementedError(
-        "Noise-shaped hashing only works with product quantization for now.");
+        "Noise shaping only works with PRODUCT and STACKED quantization for "
+        "now.");
   }
-  return asymmetric_hashing_internal::AhImpl<T>::IndexDatapointNoiseShaped(
-      maybe_residual, original, *projector_, model_->centers(),
-      noise_shaping_param.threshold, noise_shaping_param.eta, hashed);
+  return OkStatus();
 }
 
 template <typename T>
@@ -209,7 +225,7 @@ namespace {
 template <typename FloatT>
 SCANN_INLINE void ReconstructProductQuantized(
     const std::vector<FloatT>& flattend_model,
-    const std::vector<std::pair<uint32_t, uint32_t>>& subspace_sizes,
+    absl::Span<const std::pair<uint32_t, uint32_t>> subspace_sizes,
     ConstSpan<uint8_t> input, MutableSpan<FloatT> reconstructed) {
   DCHECK_LE(subspace_sizes.size(), input.size());
 
@@ -231,11 +247,11 @@ SCANN_INLINE void ReconstructProductQuantized(
 }
 
 template <typename FloatT, typename Reduce>
-SCANN_INLINE FloatT ComputeDistance(
-    ConstSpan<FloatT>& original, ConstSpan<uint8_t> hashed,
-    const std::vector<FloatT>& flattend_model,
-    const std::vector<std::pair<uint32_t, uint32_t>>& subspace_sizes,
-    Reduce reduce) {
+SCANN_INLINE FloatT
+ComputeDistance(ConstSpan<FloatT>& original, ConstSpan<uint8_t> hashed,
+                const std::vector<FloatT>& flattend_model,
+                absl::Span<const std::pair<uint32_t, uint32_t>> subspace_sizes,
+                Reduce reduce) {
   const FloatT* codebook_ptr = flattend_model.data();
   const FloatT* original_ptr = original.data();
   const uint8_t* code_ptr = hashed.data();
@@ -353,7 +369,7 @@ Status Indexer<T>::Reconstruct(ConstSpan<uint8_t> input,
                                 reconstructed);
   } else {
     return UnimplementedError(
-        "The model's quantization scheme is not supproted.");
+        "The model's quantization scheme is not supported.");
   }
   return OkStatus();
 }
@@ -363,8 +379,7 @@ Status Indexer<T>::Reconstruct(const DatapointPtr<uint8_t>& input,
                                Datapoint<FloatT>* reconstructed) const {
   reconstructed->mutable_values()->clear();
   reconstructed->mutable_values()->resize(original_space_dimension());
-  return Reconstruct(input.values_slice(),
-                     reconstructed->mutable_values_slice());
+  return Reconstruct(input.values_span(), reconstructed->mutable_values_span());
 }
 
 template <typename T>

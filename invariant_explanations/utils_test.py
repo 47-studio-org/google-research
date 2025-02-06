@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,7 +44,8 @@ class UtilsTest(absltest.TestCase):
         'NUM_BASE_MODELS': 30000,
         'NUM_SAMPLES_PER_BASE_MODEL': 8,
         'NUM_SAMPLES_TO_PLOT_TE_FOR': 8,
-        'KEEP_MODELS_ABOVE_TEST_ACCURACY': 0.98,
+        'MIN_BASE_MODEL_ACCURACY': 0.98,
+        'MAX_BASE_MODEL_ACCURACY': 1.00,
         'USE_IDENTICAL_SAMPLES_OVER_BASE_MODELS': True,
         'COVARIATES_SETTINGS': [{'chkpt': 86}],
     })

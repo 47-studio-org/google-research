@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -178,8 +178,6 @@ def return_datasets(
         1000, seed=42, reshuffle_each_iteration=True)
 
   windowed_dataset_num_items = num_items if cycle_items_first else 1
-  # TODO(nyoder): Explore different ways to structure the data and it's impact
-  #   on performance.
   train_dataset = create_windowed_dataset(
       train_dataset,
       len_max_lookback=len_max_lookback,

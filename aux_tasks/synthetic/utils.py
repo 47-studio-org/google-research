@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -256,8 +256,8 @@ def create_puddle_world_experiment(
     # valid bin.
     cols_and_rows = jnp.clip(
         jnp.floor(states * metadata['num_bins']),
-        a_min=0,
-        a_max=metadata['num_bins'] - 1)
+        min=0,
+        max=metadata['num_bins'] - 1)
 
     # Bin indices are assigned starting in the bottom left moving right, and
     # then advancing upwards after finishing each row.
@@ -283,7 +283,7 @@ def create_puddle_world_experiment(
       network_key, jnp.zeros((10, 2), dtype=jnp.float32))
   compute_phi = module.apply
 
-  return SyntheticExperiment(
+  return SyntheticExperiment(  # pytype: disable=wrong-arg-types  # jax-ndarray
       compute_phi=compute_phi,
       compute_psi=compute_psi,
       sample_states=sample_states,

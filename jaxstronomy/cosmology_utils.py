@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,19 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright 2022 Google LLC
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-
-#     https://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """Cosmology calculations in jax.
 
 This module includes functions to calculate basic cosmology quantities all
@@ -39,8 +26,9 @@ from typing import Mapping, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
+import jax.scipy as jsp
 
-from third_party.google_research.google_research.jaxstronomy import power_spectrum
+from jaxstronomy import power_spectrum
 
 SPEED_OF_LIGHT = 2.99792458e8
 # Linear density threshold for collapse.
@@ -113,7 +101,7 @@ def _comoving_distance_numerical(init_cosmology_params,
   z_samples = jnp.linspace(z_min, z_max, 1000)
   e_z_samples = _e_z(init_cosmology_params, z_samples)
 
-  one_over_ez_int = jnp.trapz(1 / e_z_samples, z_samples)
+  one_over_ez_int = jsp.integrate.trapezoid(1 / e_z_samples, z_samples)
 
   # Factor in the speed of light and the Hubble constant. The factor of 1e-3
   # comes from accounting for integral output being in Mpc * s / km and speed of
@@ -177,7 +165,7 @@ def _sigma_numerical(init_cosmology_params,
       jnp.log10(1e-6 / radius), jnp.log10(1e6 / radius), 1000)
   sigma_k_integrand = jnp.nan_to_num(
       _sigma_k_integrand(init_cosmology_params, log_k_bins, radius))
-  sigma_squared = jnp.trapz(sigma_k_integrand, log_k_bins)
+  sigma_squared = jsp.integrate.trapezoid(sigma_k_integrand, log_k_bins)
 
   return jnp.sqrt(sigma_squared / (2.0 * jnp.pi**2))
 
@@ -217,7 +205,7 @@ def _growth_factor_exact_unormalized(init_cosmology_params,
   """
   z_samples = jnp.logspace(
       jnp.log10(jax.lax.max(z, 1e-6)), jnp.log10(GROWTH_Z_MAX), 10000)
-  integral = jnp.trapz(
+  integral = jsp.integrate.trapezoid(
       (1.0 + z_samples) / _e_z_rad_to_dark(init_cosmology_params, z_samples)**3,
       z_samples)
 

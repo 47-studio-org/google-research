@@ -1,4 +1,4 @@
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ readonly SEED=10037  # For reproducibility.
 readonly BATCH_SIZE=128
 readonly MAX_ITERS=10
 readonly ORDER=6
-readonly SIZE=100000
 
 # File paths; none exist yet.
 readonly PAIRS="${TEMPDATA}/pairs.tsv"
@@ -43,13 +42,17 @@ setup() {
   conda activate pair_ngram
 }
 
-download() {
+download_pairs() {
   echo -n "Downloading pairs..."
   curl \
       --silent \
       --output "${PAIRS}" \
-      "https://gist.githubusercontent.com/kylebgorman/01adff5799edb0edf3bcce20187c833a/raw/fb0e66d31e021fca7adec4c2104ffea0e879f2e4/pairs.tsv"
+      "https://gist.githubusercontent.com/kylebgorman/01adff5799edb0edf3bcce20187c833a/raw/fef45022cd11a6f4ddeb4569be48797638a036f8/pairs.tsv"
   printf "%'d lines\n" "$(wc -l < "${PAIRS}")"
+  echo
+}
+
+download_lexicon() {
   echo -n "Downloading lexicon..."
   curl \
       --silent \
@@ -73,12 +76,14 @@ split() {
 train() {
   echo "Training pair LM..."
   python -m train \
-     --seed "${SEED}" \
-     --batch_size "${BATCH_SIZE}" \
-     --max_iters "${MAX_ITERS}" \
-     --order "${ORDER}" \
-     --tsv "${TRAIN}" \
-     --fst "${PLM}"
+       --tsv "${TRAIN}" \
+       --insertions 1 \
+       --deletions 1 \
+       --seed "${SEED}" \
+       --batch_size "${BATCH_SIZE}" \
+       --max_iters "${MAX_ITERS}" \
+       --order "${ORDER}" \
+       --fst "${PLM}"
   echo
 }
 
@@ -99,17 +104,18 @@ evaluate() {
 
   echo "Pair LM with lexicon constraint:"
   python -m predict_lexicon \
-    --rule "${PLM}" \
-    --lexicon "${LEXICON}" \
-    --input "${INPUT}" \
-    --output "${HYPO}"
+      --rule "${PLM}" \
+      --lexicon "${LEXICON}" \
+      --input "${INPUT}" \
+      --output "${HYPO}"
   python -m error --gold "${GOLD}" --hypo "${HYPO}"
   echo
 }
 
 main() {
   setup
-  download
+  download_pairs
+  download_lexicon
   split
   train
   evaluate

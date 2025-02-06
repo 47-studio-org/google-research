@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ from opt_list import common
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 import tensorflow.compat.v1 as tf1
 from tensorflow.python.framework import ops
-from tensorflow.python.keras.optimizer_v2 import adam
-from tensorflow.python.keras.optimizer_v2 import learning_rate_schedule
-from tensorflow.python.keras.optimizer_v2 import optimizer_v2
+from tf.keras.optimizers import adam
+from tf.keras.optimizers import learning_rate_schedule
+from tf.keras.optimizers import Optimizer
 
 
 class NAdamWOptimizer(tf1.train.AdamOptimizer):

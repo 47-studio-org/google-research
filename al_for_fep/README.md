@@ -1,3 +1,5 @@
+# Documentation
+
 The active learning cycle is defined by a single configuration file. Simply pass
 the configuration to the module to run. It is possible to override configuration
 parameters on the command line (via ConfigDict flags).
@@ -5,6 +7,7 @@ parameters on the command line (via ConfigDict flags).
 This is the expected format of the configuration with short descriptions for each
 field:
 
+```
 ml_collections.ConfigDict({
       'model_config':
           ml_collections.ConfigDict({
@@ -57,11 +60,25 @@ ml_collections.ConfigDict({
       'training_pool': String. Examples to train the model for this cycle on.
       'virtual_library': String. Selection pool for this cycle.
   })
+```
 
 Sample command with test data:
 
+```
 python3 -m al_for_fep.single_cycle_main 
-  --cycle_config al_for_fep/configs/simple_greedy_gaussian_process.py 
-  --cycle_config.cycle_dir ../cycle1 
-  --cycle_config.training_pool al_for_fep/data/testdata/initial_training_set.csv 
+  --cycle_config al_for_fep/configs/simple_greedy_gaussian_process.py
+  --cycle_config.cycle_dir ../cycle1
+  --cycle_config.training_pool al_for_fep/data/testdata/initial_training_set.csv
   --cycle_config.virtual_library=al_for_fep/data/testdata/virtual_library.csv
+```
+
+# Data
+
+[Available on Zenodo](https://zenodo.org/records/13759490)
+
+# Citation
+
+Please refer to the following paper to read more about applying active learning
+to free energy calculations:
+
+* James Thompson, W. Patrick Walters, Jianwen A. Feng, Nicolas A. Pabon, Hongcheng Xu, Brian B. Goldman, Demetri Moustakas, Molly Schmidt, and Forrest York. Optimizing Active Learning for Free Energy Calculations. Artificial Intelligence in the Life Sciences (2022): 100050. [![DOI for Citing](https://img.shields.io/badge/DOI-10.1016%2Fj.ailsci.2022.10050-green.svg)](https://doi.org/10.1016/j.ailsci.2022.100050)

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -109,7 +109,8 @@ def hard_sw_affine(
       edges for each i,j.
   """
   # Gathers shape and type variables.
-  b, l1, l2 = tf.shape(weights)[0], weights.shape[1], weights.shape[2]
+  b = tf.shape(weights)[0]
+  l1, l2 = tf.shape(weights)[1], tf.shape(weights)[2]
   padded_len = l1 + l2 - 1
   dtype = weights.dtype
   inf = alignment.large_compatible_positive(dtype)

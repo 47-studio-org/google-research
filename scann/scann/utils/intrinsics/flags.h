@@ -1,4 +1,4 @@
-// Copyright 2022 The Google Research Authors.
+// Copyright 2024 The Google Research Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,33 +17,52 @@
 
 #include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
+#include "scann/utils/common.h"
 #include "scann/utils/types.h"
 
 ABSL_DECLARE_FLAG(bool, ignore_avx512);
 
 ABSL_DECLARE_FLAG(bool, ignore_avx2);
 
-ABSL_DECLARE_FLAG(bool, ignore_avx);
-
 namespace research_scann {
 namespace flags_internal {
 
-extern bool should_use_avx1;
 extern bool should_use_avx2;
 extern bool should_use_avx512;
-extern bool should_use_sse4;
 
 }  // namespace flags_internal
 
-inline bool RuntimeSupportsSse4() { return flags_internal::should_use_sse4; }
-inline bool RuntimeSupportsAvx1() { return flags_internal::should_use_avx1; }
+#ifdef __x86_64__
+
+#ifdef SCANN_FORCE_SSE4
+inline bool RuntimeSupportsAvx1() { return false; }
+inline bool RuntimeSupportsAvx2() { return false; }
+inline bool RuntimeSupportsAvx512() { return false; }
+#else
+
+inline bool RuntimeSupportsAvx1() { return true; }
 inline bool RuntimeSupportsAvx2() { return flags_internal::should_use_avx2; }
 inline bool RuntimeSupportsAvx512() {
   return flags_internal::should_use_avx512;
 }
+#endif
+
+inline bool RuntimeSupportsSse4() { return true; }
+
+#else
+
+inline bool RuntimeSupportsAvx2() { return false; }
+inline bool RuntimeSupportsAvx512() { return false; }
+inline bool RuntimeSupportsSse4() { return false; }
+inline bool RuntimeSupportsAvx1() { return false; }
+
+#endif
 
 enum PlatformGeneration {
+
   kFallbackForNonX86 = 99,
+
+  kHighway = 98,
 
   kBaselineSse4 = 0,
 
@@ -73,7 +92,7 @@ inline string_view PlatformName(PlatformGeneration x86_arch) {
 
 class ScopedPlatformOverride {
  public:
-  SCANN_DECLARE_MOVE_ONLY_CLASS(ScopedPlatformOverride);
+  SCANN_DECLARE_IMMOBILE_CLASS(ScopedPlatformOverride);
 
   explicit ScopedPlatformOverride(PlatformGeneration generation);
 
@@ -82,10 +101,8 @@ class ScopedPlatformOverride {
   bool IsSupported();
 
  private:
-  bool original_avx1_;
   bool original_avx2_;
   bool original_avx512_;
-  bool original_sse4_;
 };
 
 ScopedPlatformOverride TestHookOverridePlatform(PlatformGeneration generation);

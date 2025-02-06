@@ -1,4 +1,4 @@
-// Copyright 2022 The Google Research Authors.
+// Copyright 2024 The Google Research Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +20,13 @@
 #include <cstdint>
 #include <utility>
 
+#include "absl/base/attributes.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "scann/data_format/features.pb.h"
 #include "scann/data_format/gfv_conversion.h"
 #include "scann/proto/hashed.pb.h"
+#include "scann/utils/common.h"
 #include "scann/utils/infinite_one_array.h"
 #include "scann/utils/types.h"
 
@@ -47,14 +51,14 @@ class DatapointPtr<NoValue> final {
   }
 
   const DimensionIndex* indices() const { return indices_; }
-  ConstSpan<DimensionIndex> indices_slice() const {
+  ConstSpan<DimensionIndex> indices_span() const {
     return ConstSpan<DimensionIndex>(indices_, indices_ ? nonzero_entries_ : 0);
   }
   bool has_values() const { return false; }
   InfiniteOneArray<NoValue> values() const {
     return InfiniteOneArray<NoValue>();
   }
-  InfiniteOneArray<NoValue> values_slice() const {
+  InfiniteOneArray<NoValue> values_span() const {
     return InfiniteOneArray<NoValue>();
   }
   bool IsDense() const { return false; }
@@ -84,7 +88,7 @@ class DatapointPtr final {
 
   const DimensionIndex* indices() const { return indices_; }
 
-  ConstSpan<DimensionIndex> indices_slice() const {
+  ConstSpan<DimensionIndex> indices_span() const {
     return ConstSpan<DimensionIndex>(indices_, indices_ ? nonzero_entries_ : 0);
   }
 
@@ -92,7 +96,7 @@ class DatapointPtr final {
 
   bool has_values() const { return values_; }
 
-  ConstSpan<T> values_slice() const {
+  ConstSpan<T> values_span() const {
     return ConstSpan<T>(values_, values_ ? nonzero_entries_ : 0);
   }
 
@@ -107,13 +111,13 @@ class DatapointPtr final {
   bool IsSparseOrigin() const { return nonzero_entries_ == 0; }
 
   bool IsAllOnes() const {
-    return std::all_of(values_slice().begin(), values_slice().end(),
+    return std::all_of(values_span().begin(), values_span().end(),
                        [](T val) { return val == 1; });
   }
 
   bool IsFinite() const {
     if constexpr (IsFloatingType<T>()) {
-      for (T val : values_slice()) {
+      for (T val : values_span()) {
         if (!std::isfinite(val)) return false;
       }
     }
@@ -132,6 +136,11 @@ class DatapointPtr final {
     return DatapointPtr<NoValue>(indices_, nullptr, nonzero_entries_,
                                  dimensionality_);
   }
+
+  ABSL_DEPRECATED("Prefer indices_span() over indices_slice()")
+  ConstSpan<DimensionIndex> indices_slice() const { return indices_span(); }
+  ABSL_DEPRECATED("Prefer values_span() over values_slice()")
+  ConstSpan<T> values_slice() const { return values_span(); }
 
  private:
   void ToGfvIndicesAndMetadata(GenericFeatureVector* gfv) const;
@@ -250,18 +259,18 @@ class Datapoint final {
   Status FromGfv(const GenericFeatureVector& gfv);
 
   std::vector<DimensionIndex>* mutable_indices() { return &indices_; }
-  MutableSpan<DimensionIndex> mutable_indices_slice() {
+  MutableSpan<DimensionIndex> mutable_indices_span() {
     return MutableSpan<DimensionIndex>(indices_);
   }
 
   const std::vector<DimensionIndex>& indices() const { return indices_; }
-  ConstSpan<DimensionIndex> indices_slice() const { return indices_; }
+  ConstSpan<DimensionIndex> indices_span() const { return indices_; }
 
   std::vector<T>* mutable_values() { return &values_; }
-  MutableSpan<T> mutable_values_slice() { return MutableSpan<T>(values_); }
+  MutableSpan<T> mutable_values_span() { return MutableSpan<T>(values_); }
 
   const std::vector<T>& values() const { return values_; }
-  ConstSpan<T> values_slice() const { return values_; }
+  ConstSpan<T> values_span() const { return values_; }
 
   DimensionIndex nonzero_entries() const {
     return (IsDense()) ? values_.size() : indices_.size();
@@ -316,6 +325,17 @@ class Datapoint final {
   void SortIndices();
 
   void RemoveExplicitZeroesFromSparseVector();
+
+  ABSL_DEPRECATED("Prefer mutable_indices_span() over mutable_indices_slice()")
+  MutableSpan<DimensionIndex> mutable_indices_slice() {
+    return mutable_indices_span();
+  }
+  ABSL_DEPRECATED("Prefer indices_span() over indices_slice()")
+  ConstSpan<DimensionIndex> indices_slice() const { return indices_span(); }
+  ABSL_DEPRECATED("Prefer mutable_values_span() over mutable_values_slice()")
+  MutableSpan<T> mutable_values_slice() { return mutable_values_span(); }
+  ABSL_DEPRECATED("Prefer values_span() over values_slice()")
+  ConstSpan<T> values_slice() const { return values_span(); }
 
  private:
   Status FromGfvImpl(const GenericFeatureVector& gfv);

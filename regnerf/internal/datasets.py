@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,12 +20,11 @@ from os import path
 import queue
 import threading
 
+import cv2
 from internal import math, utils  # pylint: disable=g-multiple-import
 import jax
 import numpy as np
 from PIL import Image
-
-import cv2
 
 
 def load_dataset(split, train_dir, config):
@@ -116,7 +115,7 @@ def downsample(img, factor, patch_size=-1, mode=cv2.INTER_AREA):
   sh = img.shape
   max_fn = lambda x: max(x, patch_size)
   out_shape = (max_fn(sh[1] // factor), max_fn(sh[0] // factor))
-  img = cv2.resize(img, out_shape, mode)
+  img = cv2.resize(img, out_shape, interpolation=mode)
   return img
 
 
@@ -291,7 +290,7 @@ def subsample_patches(images, patch_size, batch_size, batching='all_images'):
     idx_img = np.random.randint(0, shape[0], size=(n_patches, 1))
   elif batching == 'single_image':
     idx_img = np.random.randint(0, shape[0])
-    idx_img = np.full((n_patches, 1), idx_img, dtype=np.int)
+    idx_img = np.full((n_patches, 1), idx_img, dtype=int)
   else:
     raise ValueError('Not supported batching type!')
 
@@ -703,7 +702,9 @@ class Dataset(threading.Thread):
     res = config.dietnerf_loss_resolution
     images_feat = []
     for img in images:
-      images_feat.append(cv2.resize(img, (res, res), cv2.INTER_AREA))
+      images_feat.append(
+          cv2.resize(img, (res, res), interpolation=cv2.INTER_AREA)
+      )
     self.images_feat = np.stack(images_feat)
 
   def _generate_random_fullimage_rays(self, config):

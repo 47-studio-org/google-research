@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2022 The Google Research Authors.
+# Copyright 2024 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -152,7 +152,7 @@ def gradient_o1(field, h):
 
 def termial(n):
   """Return the sum of i from i=1 to n."""
-  return n * (n + 1) // 2
+  return n * (n + 1) // 2  # pytype: disable=bad-return-type  # jax-ndarray
 
 
 def _get_xy_stencil(neighborhood_size):
@@ -174,11 +174,8 @@ def get_stencil(neighborhood_size):
   """Generate an array of indices of neighbors for a given neighborhood size."""
 
   x_arr, y_arr = _get_xy_stencil(neighborhood_size)
-  xy_norm = jnp.array(list(map(jnp.linalg.norm, zip(x_arr, y_arr))))[:, None]
-  x_arr = x_arr[:, None]
-  y_arr = y_arr[:, None]
-
-  dist_array = jnp.concatenate([x_arr, y_arr, xy_norm], axis=1)
+  xy_norm = jnp.linalg.norm(jnp.stack([x_arr, y_arr]), axis=0)
+  dist_array = jnp.column_stack([x_arr, y_arr, xy_norm])
 
   # Sort by distance to origin
   dist_array_sorted = dist_array[dist_array[:, 2].argsort()]

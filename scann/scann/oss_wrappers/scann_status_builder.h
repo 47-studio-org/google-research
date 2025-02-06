@@ -1,4 +1,4 @@
-// Copyright 2022 The Google Research Authors.
+// Copyright 2024 The Google Research Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,27 +18,19 @@
 #include <memory>
 #include <sstream>
 
+#include "absl/base/attributes.h"
 #include "absl/memory/memory.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "tensorflow/core/lib/core/errors.h"
-#include "tensorflow/stream_executor/lib/statusor.h"
 
 namespace research_scann {
-namespace internal {
-
-using ::stream_executor::port::StatusOr;
-
-}
-
-using tensorflow::Status;
-namespace error = tensorflow::error;
-namespace errors = tensorflow::errors;
 
 class ABSL_MUST_USE_RESULT StatusBuilder {
  public:
-  explicit StatusBuilder(const Status& status);
-  explicit StatusBuilder(Status&& status);
-  explicit StatusBuilder(tensorflow::error::Code code);
+  explicit StatusBuilder(const absl::Status& status);
+  explicit StatusBuilder(absl::Status&& status);
+  explicit StatusBuilder(absl::StatusCode code);
   StatusBuilder(const StatusBuilder& sb);
 
   template <typename T>
@@ -58,38 +50,36 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
   StatusBuilder& LogError() &;
   StatusBuilder&& LogError() &&;
 
-  operator Status() const&;
-  operator Status() &&;
+  operator absl::Status() const&;
+  operator absl::Status() &&;
 
   template <typename T>
-  inline operator internal::StatusOr<T>() const& {
-    if (streamptr_ == nullptr) return internal::StatusOr<T>(status_);
-    return internal::StatusOr<T>(StatusBuilder(*this).CreateStatus());
+  inline operator absl::StatusOr<T>() const& {
+    if (streamptr_ == nullptr) return absl::StatusOr<T>(status_);
+    return absl::StatusOr<T>(StatusBuilder(*this).CreateStatus());
   }
 
   template <typename T>
-  inline operator internal::StatusOr<T>() && {
-    if (streamptr_ == nullptr) return internal::StatusOr<T>(status_);
-    return internal::StatusOr<T>(StatusBuilder(*this).CreateStatus());
+  inline operator absl::StatusOr<T>() && {
+    if (streamptr_ == nullptr) return absl::StatusOr<T>(status_);
+    return absl::StatusOr<T>(StatusBuilder(*this).CreateStatus());
   }
 
-  template <typename Enum>
-  StatusBuilder& SetErrorCode(Enum code) & {
-    status_ = Status(code, status_.error_message());
+  inline StatusBuilder& SetCode(absl::StatusCode code) & {
+    status_ = absl::Status(code, status_.message());
     return *this;
   }
 
-  template <typename Enum>
-  StatusBuilder&& SetErrorCode(Enum code) && {
-    return std::move(SetErrorCode(code));
+  inline StatusBuilder&& SetCode(absl::StatusCode code) && {
+    return std::move(SetCode(code));
   }
 
-  Status CreateStatus() &&;
+  absl::Status CreateStatus() &&;
 
  private:
   std::unique_ptr<std::ostringstream> streamptr_;
 
-  Status status_;
+  absl::Status status_;
 };
 
 StatusBuilder AbortedErrorBuilder();

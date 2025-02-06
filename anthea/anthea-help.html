@@ -1,5 +1,5 @@
 <!--
-   Copyright 2022 The Google Research Authors.
+   Copyright 2024 The Google Research Authors.
   
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -29,10 +29,11 @@
   <ul>
     <li>Projects are created by opening "Project TSV files" that have
       four fields: source and target segments, document name, system name.</li>
-    <li>MQM and SQM templates (with a few variants) are supported.</li>
+    <li>Several variants of MQM templates are supported.</li>
     <li>State is automatically saved in the browser's local storage.</li>
     <li>After evaluating, projects can be saved as "Evaluation JSON files".</li>
-    <li>Evaluation JSON files can be opened for review. MQM-Viewer-based
+    <li>Evaluation JSON files can be opened for review.
+      <a href="https://github.com/google-research/google-research/tree/master/marot">Marot</a>-based
       analysis gets shown in a tab if there are any MQM evaluations
       in the opened files.</li>
   </ul>
@@ -60,7 +61,20 @@
   </p>
 
   <p>
-    The TSV file must contain four fields in the following order:
+    The TSV file must have a header line. The header line should be the JSON encoding of an
+    object that identifies the "source_language" and "target_language". It may include other
+    metadata fields as needed, including "note_to_raters" (a plain text string that will be
+    displayed at the bottom of the instructions). Example:
+    <blockquote>
+      <code>
+      {"source_language": "[language-code-BCP47]", "target_language": "[language-code-BCP47]"}
+      </code>
+    </blockquote>
+  </p>
+
+  <p>
+    After the header line, the TSV file must contain these four fields in the following order, on
+    every subsequent line:
   </p>
   <ul>
     <li>source segment</li>
@@ -80,19 +94,28 @@
   </p>
 
   <p>
-    In addition, the format of the TSV file is slightly modified in the following ways:
+    In addition, the data in the TSV file is interpreted in these special ways:
   </p>
   <ul>
-    <li>The first line must declare the language information in a JSON object:
-      {"source-language": "[source-language-code-BCP47]",
-      "target-language":"[target-language-code-BCP47]"}</li>
-    <li>Blank lines indicate paragraph breaks.</li>
-    <li>Lines whose first character is "#" are ignored as comments. Source text that actually
-      starts with "#" should be prepended with a space.</li>
+    <li>
+      Blank lines indicate paragraph breaks between segments. Lines containing just
+      two fields (presumably document name and system name) are also treated the same
+      as blank lines.
+    </li>
+    <li>
+      The text in "source_segment" and "target_segment" is unescaped, to replace any
+      "\\n" with "\n" and any "\\t" with "\t".
+    </li>
+    <li>
+      Within a segment (source or target), two (or more) consecutive newlines at the
+      end of a sentence (see below for how sentence boundaries are marked) get rendered
+      as a paragraph break. A single newline at the end of a sentence gets rendered as a
+      line-break.
+    </li>
   </ul>
 
   <h5>
-    Word boundaries
+    Word and sentence boundaries
   </h5>
   <p>
     Anthea does word segmentation by using two splitting characters: space and
@@ -100,6 +123,10 @@
     segmentation alone. For CJK languages, and for segmenting out punctuation, etc.,
     you should use some external tool to do the segmentation, and insert zero-width
     space characters in the TSV files provided to Anthea.
+  </p>
+  <p>
+    Two consecutive zero-width spaces ('\u200b\u200b') can be used to indicate sentence
+    boundaries in text.
   </p>
 
   <h4>
@@ -135,14 +162,13 @@
     <dt>MQM</dt>
     <dd>This is the main MQM template.</dd>
 
+    <dt>MQM-Target-First</dt>
+    <dd>This is an MQM template in which the target side of a segment is shown
+      first.</dd>
+
     <dt>MQM-CD</dt>
     <dd>This is a simplified MQM template with only "accuracy" and "fluency"
       as error types.</dd>
-
-    <dt>MQM-Paragraph</dt>
-    <dd>This is nearly identical to the main MQM template, but it does
-      not force "Non-translation!" errors to cover entire segments. It
-      is best suited for non-segment-aligned data.</dd>
 
     <dt>MQM-WebPage</dt>
     <dd>This is a simplified MQM template suitable for evaluating translation
@@ -150,32 +176,31 @@
       of the source web page and its translation (the images are shown as
       context to the raters).</dd>
 
-    <dt>SQM</dt>
-    <dd>This is a "Scalar Quality Metric" template included as an
-      illustrative example.</dd>
+    <dt>MQM-Monolingual</dt>
+    <dd>This is an MQM template where only the target side is
+      evaluated.</dd>
   </dl>
   <p>
     You can create a new template as follows. Use a new unique name for the template (say
-    <code>'My-Template-Name'</code>). Add this name to the list of template choices in
+    <code>'MQM-My-Template-Name'</code>). Add this name to the list of template choices in
     <code>anthea.html</code> like this (please keep the names sorted):
   </p>
   <blockquote>
     <pre>
       &lt;option value="MQM"&gt;MQM&lt;/option&gt;
       ...
-      &lt;option value="MyTemplateName"&gt;MyTemplateName&lt;/option&gt;
+      &lt;option value="MQM-My-Template-Name"&gt;MQM-My-Template-Name&lt;/option&gt;
       ...
-      &lt;option value="SQM"&gt;SQM&lt;/option&gt;
     </pre>
   </blockquote>
   <p>
     Copy one of the existing template files (among <code>template-*.js</code>) into a new file
-    called <code>template-my-template-name.js</code>, and modify it so that it sets up the new
+    called <code>mqm-template-my-template-name.js</code>, and modify it so that it sets up the new
     template like this:
   </p>
   <blockquote>
     <pre>
-      antheaTemplates['My-Template-Name'] = {
+      antheaTemplates['MQM-My-Template-Name'] = {
         ...
       };
     </pre>
